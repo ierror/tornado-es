@@ -1,24 +1,27 @@
 # -*- coding: utf-8 -*-
-
+import six
 import json
 
-from models import BulkList
+from .models import BulkList
 
-from urllib import urlencode
+if six.PY2:
+    from urllib import urlencode
+else:
+    from urllib.parse import urlencode
+
 from tornado.ioloop import IOLoop
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest
 from tornado.concurrent import return_future
 
 
 class ESConnection(object):
-
     def __init__(self, host='localhost', port='9200', io_loop=None):
         self.io_loop = io_loop or IOLoop.instance()
         self.url = "http://%(host)s:%(port)s" % {"host": host, "port": port}
         self.bulk = BulkList()
         self.client = AsyncHTTPClient(self.io_loop)
-        self.httprequest_kwargs = {}     #extra kwargs passed to tornado's HTTPRequest class
-                                         #e.g. request_timeout
+        self.httprequest_kwargs = {}  # extra kwargs passed to tornado's HTTPRequest class
+        # e.g. request_timeout
 
     def create_path(self, method, **kwargs):
         index = kwargs.get('index', '_all')
@@ -74,8 +77,9 @@ class ESConnection(object):
     @return_future
     def get(self, index, type, uid, callback):
         def to_dict_callback(response):
-            source = json.loads(response.body).get('_source', {})
+            source = json.loads(response.body.decode('utf8')).get('_source', {})
             callback(source)
+
         self.request_document(index, type, uid, callback=to_dict_callback)
 
     @return_future
